@@ -64,6 +64,27 @@ frappe.query_reports["Trial Balance for Party"] = {
 				}
 				return party_type;
 			},
+			on_change: function () {
+				var party_type = frappe.query_report.get_filter_value("party_type");
+				var party = frappe.query_report.get_filter_value("party");
+				var company = frappe.query_report.get_filter_value("company");
+
+				if (party && party_type && ["Customer", "Supplier"].includes(party_type)) {
+					frappe.db.get_value(party_type, party, "default_currency", function (value) {
+						var currency = value && value["default_currency"];
+						if (currency) {
+							frappe.query_report.set_filter_value("presentation_currency", currency);
+						} else if (company) {
+							frappe.db.get_value("Company", company, "default_currency", function (v) {
+								frappe.query_report.set_filter_value(
+									"presentation_currency",
+									v["default_currency"] || ""
+								);
+							});
+						}
+					});
+				}
+			},
 		},
 		{
 			fieldname: "account",
@@ -75,6 +96,23 @@ frappe.query_reports["Trial Balance for Party"] = {
 					company: frappe.query_report.get_filter_value("company"),
 				});
 			},
+			on_change: function () {
+				var accounts = frappe.query_report.get_filter_value("account");
+				if (accounts && accounts.length === 1) {
+					frappe.db.get_value("Account", accounts[0], "account_currency", function (value) {
+						var currency = value && value["account_currency"];
+						if (currency) {
+							frappe.query_report.set_filter_value("presentation_currency", currency);
+						}
+					});
+				}
+			},
+		},
+		{
+			fieldname: "presentation_currency",
+			label: __("Currency"),
+			fieldtype: "Select",
+			options: erpnext.get_presentation_currency_list(),
 		},
 		{
 			fieldname: "show_zero_values",
